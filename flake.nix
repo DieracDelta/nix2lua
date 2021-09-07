@@ -22,6 +22,9 @@
           callFn = (name: args:
             "${name}(${builtins.foldl' (acc: ele: acc ++ ", " ++ ele) args})");
 
+          # builtins.hasAttr "blah" attrset
+          # TODO this needs to be looked into
+
           args2LuaTable = (args:
             (if builtins.isList args then
               (builtins.foldl' (acc: ele: acc + "${args2LuaTable ele}, ") "{" args)
@@ -53,12 +56,30 @@
               "${args2LuaTable opts}"
             ]);
         };
+        tempConfig = ''
+          local o = vim.o
+          local wo = vim.wo
+          local bo = vim.bo
+
+          -- global options
+          o.swapfile = true
+          o.dir = '/tmp'
+          o.smartcase = true
+          o.laststatus = 2
+          o.hlsearch = true
+          o.incsearch = true
+          o.ignorecase = true
+          o.scrolloff = 12
+        '';
+
         wrapNvim = (configText:
           let configFile = pkgs.writeText "luaConfigFile" configText; in
           neovim.defaultPackage.x86_64-linux.overrideAttrs (prev: {
             nativeBuildInputs = prev.nativeBuildInputs ++ [pkgs.makeWrapper];
             postFixup = ''
-              makeWrapper $out/bin/nvim $out/bin/nvim-nix --set MYVIMRC ${configFile}
+              mkdir -p $out/nvim/
+              cp ${configFile} $out/nvim/init.lua
+              makeWrapper $out/bin/nvim $out/bin/nvim-nix --set XDG_CONFIG_HOME $out/nvim/init.lua
             '';
           })
         );
@@ -66,7 +87,7 @@
   {
     #neovim = neovim.defaultPackage.x86_64-linux;
 
-    #defaultPackage.x86_64-linux = wrapNvim tempConfig;
+    defaultPackage.x86_64-linux = wrapNvim tempConfig;
 
   };
 }
