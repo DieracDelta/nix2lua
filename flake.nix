@@ -26,7 +26,7 @@
     let pkgs = import nixpkgs {system = "x86_64-linux";};
         DSL = rec {
           # TODO add in case for attrset with args2LuaTable?
-          primitive2Lua = (prim: if builtins.isBool prim then (if prim then "true" else "false") else (if builtins.isInt prim then "${builtins.toString prim}" else "\"${prim}\""));
+          primitive2Lua = (prim: if builtins.isBool prim then (if prim then "true" else "false") else (if builtins.isInt prim then "${builtins.toString prim}" else "'${prim}'"));
           # name: what to call
           # args: [String]
           callFn = (name: args:
@@ -56,13 +56,6 @@
           accessAttr = (root: attr: (if "${root}" != "" then "${root}.${attr}" else "${attr}"));
           accessAttrList = (seq: builtins.foldl' accessAttr "" seq);
 
-          # vim specific
-          genOpt = (scope: name: value:
-            let attr = (accessAttrList [ "vim" "${scope}" "${name}" ]);
-            in "${attr} = ${args2LuaTable value}");
-          genGlobalOpt = genOpt "o";
-          setGlobalOpt = s: genOpt s true;
-
           bindLocal = (name: expr: "local ${name} = ${expr}");
           reqPackage = (name:
             let fnCall = callFn "require" [ "'${name}'" ];
@@ -76,7 +69,8 @@
               "${args2LuaTable opts}"
             ]);
 
-            config = {
+          config = {
+            setOptions = {
               vim.o = {
                 showcmd = true;
                 showmatch = true;
@@ -91,7 +85,6 @@
                 number = true;
                 relativenumber = true;
                 title = true;
-                noerrorbells = true;
                 undofile = true;
                 autoread = true;
                 hidden = true;
@@ -107,46 +100,29 @@
                 sidescrolloff = 5;
                 listchars = "tab:→→,trail:●,nbsp:○";
                 clipboard = "unnamed,unnamedplus";
+                noshowmode = true;
+                formatoptions = "tcqj";
+                encoding = "utf-8";
+                fileencoding = "utf-8";
+                fileencodings = "utf-8";
+                bomb = true;
+                binary = true;
+                matchpairs = "(:),{:},[:],<:>";
+                expandtab = true;
+                pastetoggle = "<leader>v";
+                mapleader = " ";
               };
             };
-
-          tempConfig = builtins.foldl' (acc: ele: "${acc}\n${ele}") ""
-            [
-              (setGlobalOpt "showcmd")
-              (setGlobalOpt "showmatch")
-              (setGlobalOpt "ignorecase")
-              (setGlobalOpt "smartcase")
-              (setGlobalOpt "cursorline")
-              (setGlobalOpt "wrap")
-              (setGlobalOpt "autoindent")
-              (setGlobalOpt "copyindent")
-              (setGlobalOpt "splitbelow")
-              (setGlobalOpt "splitright")
-              (setGlobalOpt "autoindent")
-              (setGlobalOpt "copyindent")
-              (setGlobalOpt "splitbelow")
-              (setGlobalOpt "splitright")
-              (setGlobalOpt "number")
-              (setGlobalOpt "relativenumber")
-              (setGlobalOpt "title")
-              (setGlobalOpt "noerrorbells")
-              (setGlobalOpt "undofile")
-              (setGlobalOpt "autoread")
-              (setGlobalOpt "hidden")
-              (setGlobalOpt "nofoldenable")
-              (setGlobalOpt "list")
-
-              (genGlobalOpt "backspace" "indent,eol,start")
-              (genGlobalOpt "undolevels" "1000000")
-              (genGlobalOpt "undoreload" "1000000")
-              (genGlobalOpt "foldmethod" "indent")
-              (genGlobalOpt "foldnestmax" 10)
-              (genGlobalOpt "foldlevel" 1)
-              (genGlobalOpt "scrolloff" 3)
-              (genGlobalOpt "sidescrolloff" 5)
-              (genGlobalOpt "listchars" "tab:→→,trail:●,nbsp:○")
-              (genGlobalOpt "clipboard" "unnamed,unnamedplus")
+            keybinds = [
+              {
+                mode = "";
+                combo = "";
+                command = "";
+                opts = "";
+              }
             ];
+          };
+          neovimBuilder = config: (expr2Lua "" config.setOptions) + "\n'" + ( buildins.foldl' (acc: ele: acc + "\n" + ele) "" (map genKeybind config.keybinds));
 
         };
 
@@ -164,11 +140,11 @@
             '';
           })
         );
-        result_nvim = pkgs.wrapNeovim (wrapNvim DSL.tempConfig) {
+        result_nvim = pkgs.wrapNeovim (wrapNvim (neovimBuilder DSL.config)) {
           withNodeJs = true;
-          #plugins = with pkgs.vimPlugins; [
-            #nerdcommenter
-          #];
+          configure.packages.myVimPackage.start = with pkgs.vimPlugins; [
+            nerdcommenter
+          ];
         };
   in
   {
