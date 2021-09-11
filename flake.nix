@@ -12,18 +12,24 @@
       #rev =  "release-0.5";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    nix-bundler = {
+      url = "github:matthewbauer/nix-bundle";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    nix-utils = {
+      url = "github:tomberek/nix-utils";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, home-manager, neovim}:
+  outputs = { self, nixpkgs, home-manager, neovim, nix-bundler, nix-utils}:
     let pkgs = import nixpkgs {system = "x86_64-linux";};
         DSL = rec {
+          primitive2lua = (prim: if builtins.isBool prim then (if prim then "true" else "false") else (if builtins.isInt prim then "${prim}" else "\"${prim}\""));
           # name: what to call
           # args: [String]
           callFn = (name: args:
             "${name}(${builtins.foldl' (acc: ele: acc ++ ", " ++ ele) args})");
-
-          # builtins.hasAttr "blah" attrset
-          # TODO this needs to be looked into
 
           args2LuaTable = (args:
             (if builtins.isList args then
@@ -35,14 +41,17 @@
                 let val = (args2LuaTable args.${ele});
                 in "${acc} ${ele} = ${val},") "{" attrNames) + "}"
             else
-              builtins.toString args));
-          accessAttr = (root: attr: "${root}.${attr}");
-          accessAttrList = (seq: builtins.foldl' accessAttr seq);
+              primitive2lua args));
+          accessAttr = (root: attr: (if "${root}" != "" then "${root}.${attr}" else "${attr}"));
+          accessAttrList = (seq: builtins.foldl' accessAttr "" seq);
 
           # vim specific
-          genOpt = (name: value:
-            let attr = (accessAttrList [ "vim" "opt" "${name}" ]);
-            in "${attr} = ${value}");
+          genOpt = (scope: name: value:
+            let attr = (accessAttrList [ "vim" "${scope}" "${name}" ]);
+            in "${attr} = ${args2LuaTable value}");
+          genGlobalOpt = genOpt "o";
+          setGlobalOpt = s: genOpt s true;
+
           bindLocal = (name: expr: "local ${name} = ${expr}");
           reqPackage = (name:
             let fnCall = callFn "require" [ "'${name}'" ];
@@ -55,23 +64,48 @@
               "'${command}'"
               "${args2LuaTable opts}"
             ]);
+          tempConfig = builtins.foldl' (acc: ele: "${acc}\n${ele}") ""
+            [
+              (setGlobalOpt "showcmd")
+              (setGlobalOpt "showmatch")
+              (setGlobalOpt "ignorecase")
+              (setGlobalOpt "smartcase")
+              (setGlobalOpt "cursorline")
+              (setGlobalOpt "wrap")
+              (setGlobalOpt "autoindent")
+              (setGlobalOpt "copyindent")
+              (setGlobalOpt "splitbelow")
+              (setGlobalOpt "splitright")
+              (setGlobalOpt "autoindent")
+              (setGlobalOpt "copyindent")
+              (setGlobalOpt "splitbelow")
+              (setGlobalOpt "splitright")
+              (setGlobalOpt "number")
+              (setGlobalOpt "relativenumber")
+              (setGlobalOpt "title")
+              (setGlobalOpt "noerrorbells")
+              (setGlobalOpt "undofile")
+              (setGlobalOpt "autoread")
+              (setGlobalOpt "hidden")
+              (setGlobalOpt "nofoldenable")
+              (setGlobalOpt "list")
+
+              (genGlobalOpt "backspace" "indent,eol,start")
+              (genGlobalOpt "undolevels" "1000000")
+              (genGlobalOpt "undoreload" "1000000")
+              (genGlobalOpt "foldmethod" "indent")
+              (genGlobalOpt "foldnestmax" 10)
+              (genGlobalOpt "foldlevel" 1)
+              (genGlobalOpt "scrolloff" 3)
+              (genGlobalOpt "sidescrolloff" 5)
+              (genGlobalOpt "listchars" "tab:→→,trail:●,nbsp:○")
+              (genGlobalOpt "clipboard" "unnamed,unnamedplus")
+            ];
+
         };
-        tempConfig = ''
-          local o = vim.o
-          local wo = vim.wo
-          local bo = vim.bo
 
-          -- global options
-          o.swapfile = true
-          o.dir = '/tmp'
-          o.smartcase = true
-          o.laststatus = 2
-          o.hlsearch = true
-          o.incsearch = true
-          o.ignorecase = true
-          o.scrolloff = 12
-        '';
 
+        # TODO you should generalize this...
         wrapNvim = (configText:
           let configFile = pkgs.writeText "luaConfigFile" configText; in
           neovim.defaultPackage.x86_64-linux.overrideAttrs (prev: {
@@ -79,15 +113,28 @@
             postFixup = ''
               mkdir -p $out/nvim/
               cp ${configFile} $out/nvim/init.lua
-              makeWrapper $out/bin/nvim $out/bin/nvim-nix --set XDG_CONFIG_HOME $out/nvim/init.lua
+              mv $out/bin/nvim $out/bin/nvim_unwrapped
+              makeWrapper $out/bin/nvim_unwrapped $out/bin/nvim --add-flags -u\ $out/nvim/init.lua
             '';
           })
         );
+        result_nvim = pkgs.wrapNeovim (wrapNvim DSL.tempConfig) {
+          withNodeJs = true;
+          #plugins = with pkgs.vimPlugins; [
+            #nerdcommenter
+          #];
+        };
   in
   {
-    #neovim = neovim.defaultPackage.x86_64-linux;
+  	nvim = neovim.defaultPackage.x86_64-linux;
 
-    defaultPackage.x86_64-linux = wrapNvim tempConfig;
+    defaultPackage.x86_64-linux = result_nvim;
+    nix-bundle = nix-bundler.defaultBundler { program = "${result_nvim}/bin/nvim"; system = "x86_64-linux";};
+    rpm = nix-utils.bundlers.rpm { program = "${result_nvim}/bin/nvim"; system = "x86_64-linux";};
+    deb = nix-utils.bundlers.deb { program = "${result_nvim}/bin/nvim"; system = "x86_64-linux";};
+    DSL = DSL;
+
+    config = pkgs.writeText "config" DSL.tempConfig;
 
   };
 }
