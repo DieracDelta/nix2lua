@@ -25,7 +25,8 @@
   outputs = { self, nixpkgs, home-manager, neovim, nix-bundler, nix-utils}:
     let pkgs = import nixpkgs {system = "x86_64-linux";};
         DSL = rec {
-          primitive2lua = (prim: if builtins.isBool prim then (if prim then "true" else "false") else (if builtins.isInt prim then "${prim}" else "\"${prim}\""));
+          # TODO add in case for attrset with args2LuaTable?
+          primitive2Lua = (prim: if builtins.isBool prim then (if prim then "true" else "false") else (if builtins.isInt prim then "${builtins.toString prim}" else "\"${prim}\""));
           # name: what to call
           # args: [String]
           callFn = (name: args:
@@ -41,7 +42,17 @@
                 let val = (args2LuaTable args.${ele});
                 in "${acc} ${ele} = ${val},") "{" attrNames) + "}"
             else
-              primitive2lua args));
+              primitive2Lua args));
+          expr2Lua = (path: args:
+            if builtins.isAttrs args then
+              let attrNames = builtins.attrNames args;
+              in (builtins.foldl' (acc: ele:
+                let root = if "${path}" == "" then "" else "${path}.";
+                    val = (expr2Lua "${root}${ele}" args.${ele});
+                in "${acc}\n${val}") "" attrNames)
+            else
+              "${path} = ${primitive2Lua args}");
+
           accessAttr = (root: attr: (if "${root}" != "" then "${root}.${attr}" else "${attr}"));
           accessAttrList = (seq: builtins.foldl' accessAttr "" seq);
 
@@ -64,6 +75,41 @@
               "'${command}'"
               "${args2LuaTable opts}"
             ]);
+
+            config = {
+              vim.o = {
+                showcmd = true;
+                showmatch = true;
+                ignorecase = true;
+                smartcase = true;
+                cursorline = true;
+                wrap = true;
+                autoindent = true;
+                copyindent = true;
+                splitbelow = true;
+                splitright = true;
+                number = true;
+                relativenumber = true;
+                title = true;
+                noerrorbells = true;
+                undofile = true;
+                autoread = true;
+                hidden = true;
+                nofoldenable = true;
+                list = true;
+                backspace = "indent,eol,start";
+                undolevels = 1000000;
+                undoreload = 1000000;
+                foldmethod = "indent";
+                foldnestmax = 10;
+                foldlevel = 1;
+                scrolloff = 3;
+                sidescrolloff = 5;
+                listchars = "tab:→→,trail:●,nbsp:○";
+                clipboard = "unnamed,unnamedplus";
+              };
+            };
+
           tempConfig = builtins.foldl' (acc: ele: "${acc}\n${ele}") ""
             [
               (setGlobalOpt "showcmd")
@@ -134,7 +180,7 @@
     deb = nix-utils.bundlers.deb { program = "${result_nvim}/bin/nvim"; system = "x86_64-linux";};
     DSL = DSL;
 
-    config = pkgs.writeText "config" DSL.tempConfig;
+    config = pkgs.writeText "config" (DSL.expr2Lua "" DSL.config);
 
   };
 }
