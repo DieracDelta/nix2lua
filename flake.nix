@@ -30,17 +30,17 @@
           # name: what to call
           # args: [String]
           callFn = (name: args:
-            "${name}(${builtins.foldl' (acc: ele: acc + ele + ",") "" args})");
+            "${name}(${builtins.foldl' (acc: ele: acc + (if acc == "" then "" else ",") + ele ) "" args})");
 
           args2LuaTable = (args:
             (if builtins.isList args then
-              (builtins.foldl' (acc: ele: acc + "${args2LuaTable ele}, ") "{" args)
+              (builtins.foldl' (acc: ele: acc + (if acc == "{" then "" else ",") + "${args2LuaTable ele}") "{" args)
               + "}"
             else if builtins.isAttrs args then
               let attrNames = builtins.attrNames args;
               in (builtins.foldl' (acc: ele:
                 let val = (args2LuaTable args.${ele});
-                in "${acc} ${ele} = ${val},") "{" attrNames) + "}"
+                in "${acc}${if acc == "{" then '''' else '',''} ${ele} = ${val}") "{" attrNames) + "}"
             else
               primitive2Lua args));
           expr2Lua = (path: args:
@@ -61,7 +61,7 @@
             let fnCall = callFn "require" [ "'${name}'" ];
             in bindLocal name fnCall);
           # TODO check arguments form
-          genKeybind = ({mode, combo, command, opts}:
+          genKeybind = ({mode ? "", combo ? "", command ? "", opts ? {} }:
             callFn (accessAttrList [ "vim" "api" "nvim_set_keymap" ]) [
               "'${mode}'"
               "'${combo}'"
@@ -71,6 +71,11 @@
 
           config = {
             setOptions = {
+              vim.g = {
+                mapleader = " ";
+                nofoldenable = true;
+                noshowmode = true;
+              };
               vim.o = {
                 showcmd = true;
                 showmatch = true;
@@ -88,7 +93,6 @@
                 undofile = true;
                 autoread = true;
                 hidden = true;
-                nofoldenable = true;
                 list = true;
                 backspace = "indent,eol,start";
                 undolevels = 1000000;
@@ -100,7 +104,6 @@
                 sidescrolloff = 5;
                 listchars = "tab:→→,trail:●,nbsp:○";
                 clipboard = "unnamed,unnamedplus";
-                noshowmode = true;
                 formatoptions = "tcqj";
                 encoding = "utf-8";
                 fileencoding = "utf-8";
@@ -110,7 +113,23 @@
                 matchpairs = "(:),{:},[:],<:>";
                 expandtab = true;
                 pastetoggle = "<leader>v";
-                mapleader = " ";
+                wildmode = "list:longest,list:full";
+              };
+            };
+            pluginInit = {
+              telescope = {
+                defaults = {
+                  file_ignore_patterns = [
+                    "flake.lock"
+                    "yarn.lock"
+                  ];
+                };
+                extensions = {
+                  fzy_native = {
+                    override_generic_sorter = false;
+                    override_file_sorter = true;
+                  };
+                };
               };
             };
             keybinds = [
@@ -118,11 +137,28 @@
                 mode = "n";
                 combo = "j";
                 command = "gj";
-                opts = {"nnoremap" = true; };
+                opts = {"noremap" = true; };
+              }
+              {
+                mode = "n";
+                combo = "k";
+                command = "gk";
+                opts = {"noremap" = true; };
+              }
+              {
+                mode = "n";
+                combo = "<leader>bb";
+                command = "<cmd>Telescope buffers<cr>";
               }
             ];
           };
-          neovimBuilder = config: (expr2Lua "" config.setOptions) + "\n" + ( builtins.foldl' (acc: ele: acc + "\n" + ele) "" (map genKeybind config.keybinds));
+          # TODO
+          genPlugin = attr : "";
+          neovimBuilder =
+            config:
+              (expr2Lua "" config.setOptions) + "\n" +
+              (builtins.foldl' (acc: ele: acc + "\n" + ele) "" (map genKeybind config.keybinds))
+              (builtins.foldl' (acc: ele: acc + "\n") ele) "" (map genPlugin config.pluginInit);
 
         };
 
@@ -143,6 +179,7 @@
         result_nvim = pkgs.wrapNeovim (wrapNvim (DSL.neovimBuilder DSL.config)) {
           withNodeJs = true;
           configure.packages.myVimPackage.start = with pkgs.vimPlugins; [
+            telescope-nvim
             nerdcommenter
           ];
         };
