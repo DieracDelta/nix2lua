@@ -20,10 +20,13 @@
       url = "github:tomberek/nix-utils";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    vitality-plugins = {
+      url = "github:DieracDelta/vim-plugins-overlay";
+    };
   };
 
-  outputs = { self, nixpkgs, home-manager, neovim, nix-bundler, nix-utils}:
-    let pkgs = import nixpkgs {system = "x86_64-linux";};
+  outputs = { self, nixpkgs, home-manager, neovim, nix-bundler, nix-utils, vitality-plugins}:
+    let pkgs = import nixpkgs {overlays = [vitality-plugins.outputs.overlay]; system = "x86_64-linux";};
         DSL = rec {
           # TODO add in case for attrset with args2LuaTable?
           primitive2Lua = (prim: if builtins.isBool prim then (if prim then "true" else "false") else (if builtins.isInt prim then "${builtins.toString prim}" else "'${prim}'"));
@@ -124,13 +127,14 @@
                     "yarn.lock"
                   ];
                 };
-                extensions = {
-                  fzy_native = {
-                    override_generic_sorter = false;
-                    override_file_sorter = true;
-                  };
-                };
               };
+                #extensions = {
+                  #fzy_native = {
+                    #override_generic_sorter = false;
+                    #override_file_sorter = true;
+                  #};
+                #};
+              #};
             };
             keybinds = [
               {
@@ -152,34 +156,24 @@
               }
             ];
           };
-          # TODO
-          genPlugin = attr : "";
+		  genPlugin = attrName: attrSet: ''require('${attrName}').setup(${args2LuaTable attrSet})'';
           neovimBuilder =
             config:
+              # HACK find a way to pass this in with an init.lua
+              "lua << EOF\n" +
               (expr2Lua "" config.setOptions) + "\n" +
-              (builtins.foldl' (acc: ele: acc + "\n" + ele) "" (map genKeybind config.keybinds))
-              (builtins.foldl' (acc: ele: acc + "\n") ele) "" (map genPlugin config.pluginInit);
-
+              (builtins.foldl' (acc: ele: acc + "\n" + ele) "" (map genKeybind config.keybinds)) +
+              (builtins.foldl' (acc: ele: acc + "\n" + ele) "" (pkgs.lib.mapAttrsToList genPlugin config.pluginInit)) +
+              "\nEOF";
         };
 
 
-        # TODO you should generalize this...
-        wrapNvim = (configText:
-          let configFile = pkgs.writeText "luaConfigFile" configText; in
-          neovim.defaultPackage.x86_64-linux.overrideAttrs (prev: {
-            nativeBuildInputs = prev.nativeBuildInputs ++ [pkgs.makeWrapper];
-            postFixup = ''
-              mkdir -p $out/nvim/
-              cp ${configFile} $out/nvim/init.lua
-              mv $out/bin/nvim $out/bin/nvim_unwrapped
-              makeWrapper $out/bin/nvim_unwrapped $out/bin/nvim --add-flags -u\ $out/nvim/init.lua
-            '';
-          })
-        );
-        result_nvim = pkgs.wrapNeovim (wrapNvim (DSL.neovimBuilder DSL.config)) {
+        result_nvim = pkgs.wrapNeovim (neovim.defaultPackage.x86_64-linux) {
           withNodeJs = true;
-          configure.packages.myVimPackage.start = with pkgs.vimPlugins; [
+          configure.customRC = DSL.neovimBuilder DSL.config;
+          configure.packages.myVimPackage.start = with pkgs.vimPlugins; with pkgs.vitalityVimPlugins; [
             telescope-nvim
+            plenary-nvim
             nerdcommenter
           ];
         };
