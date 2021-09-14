@@ -30,7 +30,7 @@
           # name: what to call
           # args: [String]
           callFn = (name: args:
-            "${name}(${builtins.foldl' (acc: ele: acc ++ ", " ++ ele) args})");
+            "${name}(${builtins.foldl' (acc: ele: acc + ele + ",") "" args})");
 
           args2LuaTable = (args:
             (if builtins.isList args then
@@ -61,7 +61,7 @@
             let fnCall = callFn "require" [ "'${name}'" ];
             in bindLocal name fnCall);
           # TODO check arguments form
-          genKeybind = (mode: combo: command: opts:
+          genKeybind = ({mode, combo, command, opts}:
             callFn (accessAttrList [ "vim" "api" "nvim_set_keymap" ]) [
               "'${mode}'"
               "'${combo}'"
@@ -115,14 +115,14 @@
             };
             keybinds = [
               {
-                mode = "";
-                combo = "";
-                command = "";
-                opts = "";
+                mode = "n";
+                combo = "j";
+                command = "gj";
+                opts = {"nnoremap" = true; };
               }
             ];
           };
-          neovimBuilder = config: (expr2Lua "" config.setOptions) + "\n'" + ( buildins.foldl' (acc: ele: acc + "\n" + ele) "" (map genKeybind config.keybinds));
+          neovimBuilder = config: (expr2Lua "" config.setOptions) + "\n" + ( builtins.foldl' (acc: ele: acc + "\n" + ele) "" (map genKeybind config.keybinds));
 
         };
 
@@ -140,7 +140,7 @@
             '';
           })
         );
-        result_nvim = pkgs.wrapNeovim (wrapNvim (neovimBuilder DSL.config)) {
+        result_nvim = pkgs.wrapNeovim (wrapNvim (DSL.neovimBuilder DSL.config)) {
           withNodeJs = true;
           configure.packages.myVimPackage.start = with pkgs.vimPlugins; [
             nerdcommenter
@@ -148,7 +148,7 @@
         };
   in
   {
-  	nvim = neovim.defaultPackage.x86_64-linux;
+    nvim = neovim.defaultPackage.x86_64-linux;
 
     defaultPackage.x86_64-linux = result_nvim;
     nix-bundle = nix-bundler.defaultBundler { program = "${result_nvim}/bin/nvim"; system = "x86_64-linux";};
@@ -156,7 +156,7 @@
     deb = nix-utils.bundlers.deb { program = "${result_nvim}/bin/nvim"; system = "x86_64-linux";};
     DSL = DSL;
 
-    config = pkgs.writeText "config" (DSL.expr2Lua "" DSL.config);
+    config = pkgs.writeText "config" (DSL.neovimBuilder DSL.config);
 
   };
 }
