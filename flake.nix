@@ -23,17 +23,21 @@
     vitality-plugins = {
       url = "github:DieracDelta/vim-plugins-overlay";
     };
+    dracula-nvim = {
+      url = "github:Mofiqul/dracula.nvim";
+      flake = false;
+    };
   };
 
-  outputs = { self, nixpkgs, home-manager, neovim, nix-bundler, nix-utils, vitality-plugins}:
+  outputs = { self, nixpkgs, home-manager, neovim, nix-bundler, nix-utils, vitality-plugins, dracula-nvim}:
     let pkgs = import nixpkgs {overlays = [vitality-plugins.outputs.overlay]; system = "x86_64-linux";};
         DSL = rec {
           # TODO add in case for attrset with args2LuaTable?
           primitive2Lua = (prim: if builtins.isBool prim then (if prim then "true" else "false") else (if builtins.isInt prim || builtins.isFloat prim then "${builtins.toString prim}" else "'${prim}'"));
           # name: what to call
-          # args: [String]
+          # args: [primitive]
           callFn = (name: args:
-            "${name}(${builtins.foldl' (acc: ele: acc + (if acc == "" then "" else ",") + ele ) "" args})");
+            "${name}(${builtins.foldl' (acc: ele: acc + (if acc == "" then "" else ",") + (args2LuaTable ele) ) "" args})");
 
           args2LuaTable = (args:
             (if builtins.isList args then
@@ -70,15 +74,15 @@
 
           bindLocal = (name: expr: "local ${name} = ${expr}");
           reqPackage = (name:
-            let fnCall = callFn "require" [ "'${name}'" ];
+            let fnCall = callFn "require" [ "${name}" ];
             in bindLocal name fnCall);
           # TODO check arguments form
           genKeybind = ({mode ? "", combo ? "", command ? "", opts ? {} }:
             callFn (accessAttrList [ "vim" "api" "nvim_set_keymap" ]) [
-              "'${mode}'"
-              "'${combo}'"
-              "'${command}'"
-              "${args2LuaTable opts}"
+              "${mode}"
+              "${combo}"
+              "${command}"
+              opts
             ]);
 
           config = {
@@ -89,6 +93,7 @@
                 noshowmode = true;
               };
               vim.o = {
+                termguicolors = true;
                 showcmd = true;
                 showmatch = true;
                 ignorecase = true;
@@ -106,6 +111,7 @@
                 autoread = true;
                 hidden = true;
                 list = true;
+                background = "dark";
                 backspace = "indent,eol,start";
                 undolevels = 1000000;
                 undoreload = 1000000;
@@ -181,6 +187,10 @@
                 command = "<cmd>Telescope find_files<cr>";
               }
             ];
+            rawLua = [
+              (callFn "vim.cmd" ["syntax on"])
+              (callFn "vim.cmd" ["colorscheme dracula"])
+            ];
           };
 		  genPlugin = attrName: attrSet: ''require('${attrName}').setup(${args2LuaTable attrSet})'';
           neovimBuilder =
@@ -190,6 +200,7 @@
               (expr2Lua "" config.setOptions) + "\n" +
               (builtins.foldl' (acc: ele: acc + "\n" + ele) "" (map genKeybind config.keybinds)) +
               (builtins.foldl' (acc: ele: acc + "\n" + ele) "" (pkgs.lib.mapAttrsToList genPlugin config.pluginInit)) +
+              (builtins.foldl' (acc: ele: acc + "\n" + ele) "" config.rawLua) +
               "\nEOF";
         };
 
@@ -199,6 +210,7 @@
           withNodeJs = true;
           configure.customRC = DSL.neovimBuilder DSL.config;
           configure.packages.myVimPackage.start = with pkgs.vimPlugins; with pkgs.vitalityVimPlugins; [
+            (pkgs.vimUtils.buildVimPluginFrom2Nix { pname = "dracula-nvim"; version = "master"; src = dracula-nvim; })
             telescope-nvim
             plenary-nvim
             nerdcommenter

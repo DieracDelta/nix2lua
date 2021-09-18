@@ -80,6 +80,22 @@
         "type": "github"
       }
     },
+    "dracula-nvim": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1631239715,
+        "narHash": "sha256-onSF6R+zPLQ/MPI/n9UaMqsVot63byHvUqJF9irhRCs=",
+        "owner": "Mofiqul",
+        "repo": "dracula.nvim",
+        "rev": "1e0330d5dde882a64deb89a3c3c7ef9c22050296",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Mofiqul",
+        "repo": "dracula.nvim",
+        "type": "github"
+      }
+    },
     "feline-nvim": {
       "flake": false,
       "locked": {
@@ -804,6 +820,7 @@
     },
     "root": {
       "inputs": {
+        "dracula-nvim": "dracula-nvim",
         "home-manager": "home-manager",
         "neovim": "neovim",
         "nix-bundler": "nix-bundler",
