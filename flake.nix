@@ -29,7 +29,7 @@
     let pkgs = import nixpkgs {overlays = [vitality-plugins.outputs.overlay]; system = "x86_64-linux";};
         DSL = rec {
           # TODO add in case for attrset with args2LuaTable?
-          primitive2Lua = (prim: if builtins.isBool prim then (if prim then "true" else "false") else (if builtins.isInt prim then "${builtins.toString prim}" else "'${prim}'"));
+          primitive2Lua = (prim: if builtins.isBool prim then (if prim then "true" else "false") else (if builtins.isInt prim || builtins.isFloat prim then "${builtins.toString prim}" else "'${prim}'"));
           # name: what to call
           # args: [String]
           callFn = (name: args:
@@ -40,10 +40,15 @@
               (builtins.foldl' (acc: ele: acc + (if acc == "{" then "" else ",") + "${args2LuaTable ele}") "{" args)
               + "}"
             else if builtins.isAttrs args then
-              let attrNames = builtins.attrNames args;
-              in (builtins.foldl' (acc: ele:
-                let val = (args2LuaTable args.${ele});
-                in "${acc}${if acc == "{" then '''' else '',''} ${ele} = ${val}") "{" attrNames) + "}"
+            (if pkgs.lib.hasAttrByPath ["isObject"] args then
+               # TODO assert has other attr
+               "${args.content}"
+             else
+               (let attrNames = builtins.attrNames args;
+               in (builtins.foldl' (acc: ele:
+                 let val = (args2LuaTable args.${ele});
+                 in "${acc}${if acc == "{" then '''' else '',''} ${ele} = ${val}") "{" attrNames) + "}")
+            )
             else
               primitive2Lua args));
           expr2Lua = (path: args:
@@ -58,6 +63,10 @@
 
           accessAttr = (root: attr: (if "${root}" != "" then "${root}.${attr}" else "${attr}"));
           accessAttrList = (seq: builtins.foldl' accessAttr "" seq);
+          luaExpr = expr: {
+            isObject = true;
+            content = expr;
+          };
 
           bindLocal = (name: expr: "local ${name} = ${expr}");
           reqPackage = (name:
@@ -126,15 +135,22 @@
                     "flake.lock"
                     "yarn.lock"
                   ];
+                  layout_config = {
+                    width = 0.99;
+                    height = 0.99;
+                  };
+                  mappings = {
+                    i = {
+                      "['<c-j>']" = luaExpr "require('telescope.actions').move_selection_next";
+                      "['<c-k>']" = luaExpr "require('telescope.actions').move_selection_previous";
+                    };
+                    n = {
+                      "['<c-j>']" = luaExpr "require('telescope.actions').move_selection_next";
+                      "['<c-k>']" = luaExpr "require('telescope.actions').move_selection_previous";
+                    };
+                  };
                 };
               };
-                #extensions = {
-                  #fzy_native = {
-                    #override_generic_sorter = false;
-                    #override_file_sorter = true;
-                  #};
-                #};
-              #};
             };
             keybinds = [
               {
@@ -154,6 +170,16 @@
                 combo = "<leader>bb";
                 command = "<cmd>Telescope buffers<cr>";
               }
+              {
+                mode = "n";
+                combo = "<leader>gg";
+                command = "<cmd>Telescope live_grep<cr>";
+              }
+              {
+                mode = "n";
+                combo = "<leader><leader>";
+                command = "<cmd>Telescope find_files<cr>";
+              }
             ];
           };
 		  genPlugin = attrName: attrSet: ''require('${attrName}').setup(${args2LuaTable attrSet})'';
@@ -166,6 +192,7 @@
               (builtins.foldl' (acc: ele: acc + "\n" + ele) "" (pkgs.lib.mapAttrsToList genPlugin config.pluginInit)) +
               "\nEOF";
         };
+
 
 
         result_nvim = pkgs.wrapNeovim (neovim.defaultPackage.x86_64-linux) {
