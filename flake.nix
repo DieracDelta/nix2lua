@@ -227,6 +227,31 @@
                 combo = "<leader>bD";
                 command = "<cmd>Bclose!<cr>";
               }
+              {
+                mode = "n";
+                combo = "<leader>wd";
+                command = "<cmd>q<cr>";
+              }
+              {
+                mode = "n";
+                combo = "<leader>wl";
+                command = "<cmd>wincmd l<cr>";
+              }
+              {
+                mode = "n";
+                combo = "<leader>wj";
+                command = "<cmd>wincmd j<cr>";
+              }
+              {
+                mode = "n";
+                combo = "<leader>wk";
+                command = "<cmd>wincmd k<cr>";
+              }
+              {
+                mode = "n";
+                combo = "<leader>wh";
+                command = "<cmd>wincmd h<cr>";
+              }
             ];
             rawLua = [
               (callFn "vim.cmd" ["syntax on"])
