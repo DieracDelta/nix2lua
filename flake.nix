@@ -135,6 +135,12 @@
               };
             };
             pluginInit = {
+              #lspconfig = {
+                #bash = {
+                #};
+                #rnix = {
+                #};
+              #};
               telescope = {
                 defaults = {
                   file_ignore_patterns = [
@@ -186,6 +192,41 @@
                 combo = "<leader><leader>";
                 command = "<cmd>Telescope find_files<cr>";
               }
+              {
+                mode = "n";
+                combo = "<leader>ws";
+                command = "<cmd>sp<cr>";
+              }
+              {
+                mode = "n";
+                combo = "<leader>wv";
+                command = "<cmd>vs<cr>";
+              }
+              {
+                mode = "n";
+                combo = "<leader>bd";
+                command = "<cmd>q<cr>";
+              }
+              {
+                mode = "n";
+                combo = "<leader>bn";
+                command = "<cmd>tabnext<cr>";
+              }
+              {
+                mode = "n";
+                combo = "<leader>bp";
+                command = "<cmd>tabprevious<cr>";
+              }
+              {
+                mode = "n";
+                combo = "<leader>bN";
+                command = "<cmd>tabedit<cr>";
+              }
+              {
+                mode = "n";
+                combo = "<leader>bD";
+                command = "<cmd>Bclose!<cr>";
+              }
             ];
             rawLua = [
               (callFn "vim.cmd" ["syntax on"])
@@ -214,6 +255,7 @@
             telescope-nvim
             plenary-nvim
             nerdcommenter
+            nvim-lspconfig
           ];
         };
   in
@@ -221,6 +263,7 @@
     nvim = neovim.defaultPackage.x86_64-linux;
 
     defaultPackage.x86_64-linux = result_nvim;
+    # TODO nix portable
     nix-bundle = nix-bundler.defaultBundler { program = "${result_nvim}/bin/nvim"; system = "x86_64-linux";};
     rpm = nix-utils.bundlers.rpm { program = "${result_nvim}/bin/nvim"; system = "x86_64-linux";};
     deb = nix-utils.bundlers.deb { program = "${result_nvim}/bin/nvim"; system = "x86_64-linux";};
