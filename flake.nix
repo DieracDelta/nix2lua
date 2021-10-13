@@ -86,6 +86,36 @@
             ]);
 
           config = {
+            extraConfig = "
+
+local lspc = require('lspconfig')
+lspc.rust_analyzer.setup({
+  cmd = { '${pkgs.rust-analyzer}/bin/rust-analyzer' }
+})
+require('lsp_signature').setup({
+  bind = true,
+  hint_enable = false,
+  hi_parameter = 'Visual',
+  handler_opts = {
+    border = 'single'
+  }
+})
+require('nvim-treesitter.configs').setup({
+ ensure_installed = {'bash', 'c', 'css', 'javascript', 'json', 'lua', 'nix', 'python', 'rust', 'toml'},
+ highlight = {
+   enable = true,
+   disable = {'css'}
+ },
+ rainbow = {
+   enable = true,
+   disable = {'html'},
+   extended_mode = true,
+   max_file_lines = 10000,
+   colors = {'#bd93f9', '#6272a4', '#8be9fd', '#50fa7b', '#f1fa8c', '#ffb86c', '#ff5555'}
+ }
+})
+
+            ";
             setOptions = {
               vim.g = {
                 mapleader = " ";
@@ -252,6 +282,11 @@
                 combo = "<leader>wh";
                 command = "<cmd>wincmd h<cr>";
               }
+              #{
+                #mode = "n";
+                #combo = "<leader>gl";
+                #command = "<cmd>lua require('telescope.builtin').resume()<cr>";
+              #}
             ];
             rawLua = [
               (callFn "vim.cmd" ["syntax on"])
@@ -267,6 +302,7 @@
               (builtins.foldl' (acc: ele: acc + "\n" + ele) "" (map genKeybind config.keybinds)) +
               (builtins.foldl' (acc: ele: acc + "\n" + ele) "" (pkgs.lib.mapAttrsToList genPlugin config.pluginInit)) +
               (builtins.foldl' (acc: ele: acc + "\n" + ele) "" config.rawLua) +
+              "${config.extraConfig}" +
               "\nEOF";
         };
 
@@ -281,6 +317,12 @@
             plenary-nvim
             nerdcommenter
             nvim-lspconfig
+            lspkind-nvim
+            (pkgs.vimPlugins.nvim-treesitter.withPlugins (
+              plugins: with plugins; [tree-sitter-nix tree-sitter-python tree-sitter-c tree-sitter-rust]
+            ))
+            lsp_signature-nvim
+            popup-nvim
           ];
         };
   in
