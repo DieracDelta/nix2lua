@@ -2,7 +2,7 @@
   description = "A very basic flake";
 
   inputs = {
-    nixpkgs = { url = "github:NixOS/nixpkgs/release-21.05"; };
+    nixpkgs = { url = "github:NixOS/nixpkgs/master"; };
     home-manager = {
       url = "github:nix-community/home-manager/release-21.05";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -88,9 +88,25 @@
           config = {
             extraConfig = "
 
+local cmp = require('cmp')
+ cmp.setup({
+    mapping = {
+      ['<C-d>'] = cmp.mapping.scroll_docs(-4),
+      ['<C-f>'] = cmp.mapping.scroll_docs(4),
+      ['<C-Space>'] = cmp.mapping.complete(),
+      ['<C-e>'] = cmp.mapping.close(),
+      ['<CR>'] = cmp.mapping.confirm({ select = true }),
+    },
+    sources = {
+      { name = 'nvim_lsp' },
+      { name = 'buffer' },
+    }
+  })
+
 local lspc = require('lspconfig')
 lspc.rust_analyzer.setup({
-  cmd = { '${pkgs.rust-analyzer}/bin/rust-analyzer' }
+  cmd = { '${pkgs.rust-analyzer}/bin/rust-analyzer' },
+  capabilities = require('cmp_nvim_lsp').update_capabilities(vim.lsp.protocol.make_client_capabilities())
 })
 require('lsp_signature').setup({
   bind = true,
@@ -114,6 +130,20 @@ require('nvim-treesitter.configs').setup({
    colors = {'#bd93f9', '#6272a4', '#8be9fd', '#50fa7b', '#f1fa8c', '#ffb86c', '#ff5555'}
  }
 })
+vim.api.nvim_set_keymap('n', '<space>D', '<cmd>lua\tvim.lsp.buf.declaration()<CR>', {noremap = true, silent = true})
+vim.api.nvim_set_keymap('n', '<space>d', '<cmd>lua\tvim.lsp.buf.definition()<CR>', {noremap = true, silent = true})
+vim.api.nvim_set_keymap('n', 'K', '<cmd>lua\tvim.lsp.buf.hover()<CR>', {noremap = true, silent = true})
+vim.api.nvim_set_keymap('n', '<space>i', '<cmd>lua\tvim.lsp.buf.implementation()<CR>', {noremap = true, silent = true})
+vim.api.nvim_set_keymap('n', '<C-k>', '<cmd>lua\tvim.lsp.buf.signature_help()<CR>', {noremap = true, silent = true})
+vim.api.nvim_set_keymap('n', '<space>k', '<cmd>lua\tvim.lsp.buf.type_definition()<CR>', {noremap = true, silent = true})
+vim.api.nvim_set_keymap('n', '<space>rn', '<cmd>lua\tvim.lsp.buf.rename()<CR>', {noremap = true, silent = true})
+vim.api.nvim_set_keymap('n', '<space>ca', '<cmd>lua\tvim.lsp.buf.code_action()<CR>', {noremap = true, silent = true})
+vim.api.nvim_set_keymap('n', '<space>r', '<cmd>lua\tvim.lsp.buf.references()<CR>', {noremap = true, silent = true})
+vim.api.nvim_set_keymap('n', '<space>e', '<cmd>lua\tvim.lsp.diagnostic.show_line_diagnostics()<CR>', {noremap = true, silent = true})
+vim.api.nvim_set_keymap('n', '[d', '<cmd>lua\tvim.lsp.diagnostic.goto_prev()<CR>', {noremap = true, silent = true})
+vim.api.nvim_set_keymap('n', ']d', '<cmd>lua\tvim.lsp.diagnostic.goto_next()<CR>', {noremap = true, silent = true})
+vim.api.nvim_set_keymap('n', '<space>q', '<cmd>lua\tvim.lsp.diagnostic.set_loclist()<CR>', {noremap = true, silent = true})
+vim.api.nvim_set_keymap('n', '<space>f', '<cmd>lua\tvim.lsp.buf.formatting()<CR>', {noremap = true, silent = true})
 
             ";
             setOptions = {
@@ -313,7 +343,19 @@ require('nvim-treesitter.configs').setup({
           configure.customRC = DSL.neovimBuilder DSL.config;
           configure.packages.myVimPackage.start = with pkgs.vimPlugins; with pkgs.vitalityVimPlugins; [
             (pkgs.vimUtils.buildVimPluginFrom2Nix { pname = "dracula-nvim"; version = "master"; src = dracula-nvim; })
-            telescope-nvim
+            (telescope-nvim.overrideAttrs (oldattrs:
+            {
+              src = pkgs.fetchFromGitHub {
+                owner = "nvim-telescope";
+                repo = "telescope.nvim";
+                rev = "b5c63c6329cff8dd8e23047eecd1f581379f1587";
+                sha256 = "0I/iu1V7SqGgrzMfeZ0HbKM0/ygMT9+iXJq2CiMorZs=";
+              };
+            }
+            ))
+            cmp-buffer
+            nvim-cmp
+            cmp-nvim-lsp
             plenary-nvim
             nerdcommenter
             nvim-lspconfig
