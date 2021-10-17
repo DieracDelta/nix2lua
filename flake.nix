@@ -9,28 +9,40 @@
     };
     neovim = {
       url = "github:neovim/neovim?rev=88336851ee1e9c3982195592ae2fc145ecfd3369&dir=contrib";
-      #rev =  "release-0.5";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     nix-bundler = {
       url = "github:matthewbauer/nix-bundle";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    telescope-src = {
+      url = "github:nvim-telescope/telescope.nvim?rev=b5c63c6329cff8dd8e23047eecd1f581379f1587";
+      flake = false;
+    };
     nix-utils = {
       url = "github:tomberek/nix-utils";
       inputs.nixpkgs.follows = "nixpkgs";
-    };
-    vitality-plugins = {
-      url = "github:DieracDelta/vim-plugins-overlay";
     };
     dracula-nvim = {
       url = "github:Mofiqul/dracula.nvim";
       flake = false;
     };
+    nvim-cmp = {
+      url = "github:hrsh7th/nvim-cmp";
+      flake = false;
+    };
+    nvim-cmp-lsp = {
+      url = "github:hrsh7th/cmp-nvim-lsp";
+      flake = false;
+    };
+    cmp-buffer = {
+      url = "github:hrsh7th/cmp-buffer";
+      flake = false;
+    };
   };
 
-  outputs = { self, nixpkgs, home-manager, neovim, nix-bundler, nix-utils, vitality-plugins, dracula-nvim}:
-    let pkgs = import nixpkgs {overlays = [vitality-plugins.outputs.overlay]; system = "x86_64-linux";};
+  outputs = inputs@{ self, nixpkgs, home-manager, neovim, nix-bundler, nix-utils, dracula-nvim, ...}:
+    let pkgs = import nixpkgs {system = "x86_64-linux";};
         DSL = rec {
           # TODO add in case for attrset with args2LuaTable?
           primitive2Lua = (prim: if builtins.isBool prim then (if prim then "true" else "false") else (if builtins.isInt prim || builtins.isFloat prim then "${builtins.toString prim}" else "'${prim}'"));
@@ -91,11 +103,18 @@
 local cmp = require('cmp')
  cmp.setup({
     mapping = {
+      ['<C-n>'] = cmp.mapping.select_next_item({ behavior = cmp.SelectBehavior.Insert }),
+      ['<C-p>'] = cmp.mapping.select_prev_item({ behavior = cmp.SelectBehavior.Insert }),
+      ['<Down>'] = cmp.mapping.select_next_item({ behavior = cmp.SelectBehavior.Select }),
+      ['<Up>'] = cmp.mapping.select_prev_item({ behavior = cmp.SelectBehavior.Select }),
       ['<C-d>'] = cmp.mapping.scroll_docs(-4),
       ['<C-f>'] = cmp.mapping.scroll_docs(4),
       ['<C-Space>'] = cmp.mapping.complete(),
       ['<C-e>'] = cmp.mapping.close(),
-      ['<CR>'] = cmp.mapping.confirm({ select = true }),
+      ['<CR>'] = cmp.mapping.confirm({
+        behavior = cmp.ConfirmBehavior.Replace,
+        select = true,
+      })
     },
     sources = {
       { name = 'nvim_lsp' },
@@ -130,27 +149,13 @@ require('nvim-treesitter.configs').setup({
    colors = {'#bd93f9', '#6272a4', '#8be9fd', '#50fa7b', '#f1fa8c', '#ffb86c', '#ff5555'}
  }
 })
-vim.api.nvim_set_keymap('n', '<space>D', '<cmd>lua\tvim.lsp.buf.declaration()<CR>', {noremap = true, silent = true})
-vim.api.nvim_set_keymap('n', '<space>d', '<cmd>lua\tvim.lsp.buf.definition()<CR>', {noremap = true, silent = true})
-vim.api.nvim_set_keymap('n', 'K', '<cmd>lua\tvim.lsp.buf.hover()<CR>', {noremap = true, silent = true})
-vim.api.nvim_set_keymap('n', '<space>i', '<cmd>lua\tvim.lsp.buf.implementation()<CR>', {noremap = true, silent = true})
-vim.api.nvim_set_keymap('n', '<C-k>', '<cmd>lua\tvim.lsp.buf.signature_help()<CR>', {noremap = true, silent = true})
-vim.api.nvim_set_keymap('n', '<space>k', '<cmd>lua\tvim.lsp.buf.type_definition()<CR>', {noremap = true, silent = true})
-vim.api.nvim_set_keymap('n', '<space>rn', '<cmd>lua\tvim.lsp.buf.rename()<CR>', {noremap = true, silent = true})
-vim.api.nvim_set_keymap('n', '<space>ca', '<cmd>lua\tvim.lsp.buf.code_action()<CR>', {noremap = true, silent = true})
-vim.api.nvim_set_keymap('n', '<space>r', '<cmd>lua\tvim.lsp.buf.references()<CR>', {noremap = true, silent = true})
-vim.api.nvim_set_keymap('n', '<space>e', '<cmd>lua\tvim.lsp.diagnostic.show_line_diagnostics()<CR>', {noremap = true, silent = true})
-vim.api.nvim_set_keymap('n', '[d', '<cmd>lua\tvim.lsp.diagnostic.goto_prev()<CR>', {noremap = true, silent = true})
-vim.api.nvim_set_keymap('n', ']d', '<cmd>lua\tvim.lsp.diagnostic.goto_next()<CR>', {noremap = true, silent = true})
-vim.api.nvim_set_keymap('n', '<space>q', '<cmd>lua\tvim.lsp.diagnostic.set_loclist()<CR>', {noremap = true, silent = true})
-vim.api.nvim_set_keymap('n', '<space>f', '<cmd>lua\tvim.lsp.buf.formatting()<CR>', {noremap = true, silent = true})
-
             ";
             setOptions = {
               vim.g = {
                 mapleader = " ";
                 nofoldenable = true;
                 noshowmode = true;
+                completeopt = "menu,menuone,noselect";
               };
               vim.o = {
                 termguicolors = true;
@@ -312,11 +317,72 @@ vim.api.nvim_set_keymap('n', '<space>f', '<cmd>lua\tvim.lsp.buf.formatting()<CR>
                 combo = "<leader>wh";
                 command = "<cmd>wincmd h<cr>";
               }
-              #{
-                #mode = "n";
-                #combo = "<leader>gl";
-                #command = "<cmd>lua require('telescope.builtin').resume()<cr>";
-              #}
+              {
+                mode = "n";
+                combo = "<space>D";
+                command = "<cmd>lua\tvim.lsp.buf.declaration()<CR>";
+                opts = {"noremap" = true; "silent" = true;};
+              }
+              {
+                mode = "n";
+                combo = "<space>d";
+                command = "<cmd>lua\tvim.lsp.buf.definition()<CR>";
+                opts = {"noremap" = true; "silent" = true;};
+              }
+              {
+                mode = "n";
+                combo = "K";
+                command = "<cmd>lua\tvim.lsp.buf.hover()<CR>";
+                opts = {"noremap" = true; "silent" = true;};
+              }
+              {
+                mode = "n";
+                combo = "<space>i";
+                command = "<cmd>lua\tvim.lsp.buf.implementation()<CR>";
+                opts = {"noremap" = true; "silent" = true;};
+              }
+              {
+                mode = "n";
+                combo = "<C-k>";
+                command = "<cmd>lua\tvim.lsp.buf.signature_help()<CR>";
+                opts = {"noremap" = true; "silent" = true;};
+              }
+              {
+                mode = "n";
+                combo = "<space>k";
+                command = "<cmd>lua\tvim.lsp.buf.type_definition()<CR>";
+                opts = {"noremap" = true; "silent" = true;};
+              }
+              {
+                mode = "n";
+                combo = "<space>rn";
+                command = "<cmd>lua\tvim.lsp.buf.rename()<CR>";
+                opts = {"noremap" = true; "silent" = true;};
+              }
+              {
+                mode = "n";
+                combo = "<space>ca";
+                command = "<cmd>lua\tvim.lsp.buf.code_action()<CR>";
+                opts = {"noremap" = true; "silent" = true;};
+              }
+              {
+                mode = "n";
+                combo = "<space>r";
+                command = "<cmd>lua\tvim.lsp.buf.references()<CR>";
+                opts = {"noremap" = true; "silent" = true;};
+              }
+              {
+                mode = "n";
+                combo = "<space>e";
+                command = "<cmd>lua\tvim.lsp.diagnostic.show_line_diagnostics()<CR>";
+                opts = {"noremap" = true; "silent" = true;};
+              }
+              {
+                mode = "n";
+                combo = "<space>f";
+                command = "<cmd>lua\tvim.lsp.buf.formatting()<CR>";
+                opts = {"noremap" = true; "silent" = true;};
+              }
             ];
             rawLua = [
               (callFn "vim.cmd" ["syntax on"])
@@ -341,21 +407,12 @@ vim.api.nvim_set_keymap('n', '<space>f', '<cmd>lua\tvim.lsp.buf.formatting()<CR>
         result_nvim = pkgs.wrapNeovim (neovim.defaultPackage.x86_64-linux) {
           withNodeJs = true;
           configure.customRC = DSL.neovimBuilder DSL.config;
-          configure.packages.myVimPackage.start = with pkgs.vimPlugins; with pkgs.vitalityVimPlugins; [
+          configure.packages.myVimPackage.start = with pkgs.vimPlugins; [
             (pkgs.vimUtils.buildVimPluginFrom2Nix { pname = "dracula-nvim"; version = "master"; src = dracula-nvim; })
-            (telescope-nvim.overrideAttrs (oldattrs:
-            {
-              src = pkgs.fetchFromGitHub {
-                owner = "nvim-telescope";
-                repo = "telescope.nvim";
-                rev = "b5c63c6329cff8dd8e23047eecd1f581379f1587";
-                sha256 = "0I/iu1V7SqGgrzMfeZ0HbKM0/ygMT9+iXJq2CiMorZs=";
-              };
-            }
-            ))
-            cmp-buffer
-            nvim-cmp
-            cmp-nvim-lsp
+            (telescope-nvim.overrideAttrs (oldattrs: { src = inputs.telescope-src; }))
+            (cmp-buffer.overrideAttrs (oldattrs: { src = inputs.cmp-buffer; }))
+            (nvim-cmp.overrideAttrs (oldattrs: { src = inputs.nvim-cmp; }))
+            (cmp-nvim-lsp.overrideAttrs (oldattrs: { src = inputs.nvim-cmp-lsp; }))
             plenary-nvim
             nerdcommenter
             nvim-lspconfig
