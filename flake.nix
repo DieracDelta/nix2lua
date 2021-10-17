@@ -3,10 +3,6 @@
 
   inputs = {
     nixpkgs = { url = "github:NixOS/nixpkgs/master"; };
-    home-manager = {
-      url = "github:nix-community/home-manager/release-21.05";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     neovim = {
       url = "github:neovim/neovim?rev=88336851ee1e9c3982195592ae2fc145ecfd3369&dir=contrib";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -41,7 +37,7 @@
     };
   };
 
-  outputs = inputs@{ self, nixpkgs, home-manager, neovim, nix-bundler, nix-utils, dracula-nvim, ...}:
+  outputs = inputs@{ self, nixpkgs, neovim, nix-bundler, nix-utils, dracula-nvim, ...}:
     let pkgs = import nixpkgs {system = "x86_64-linux";};
         DSL = rec {
           # TODO add in case for attrset with args2LuaTable?
