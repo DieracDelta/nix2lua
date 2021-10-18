@@ -35,9 +35,17 @@
       url = "github:hrsh7th/cmp-buffer";
       flake = false;
     };
+    rnix-lsp = {
+      url = "github:nix-community/rnix-lsp";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    treesitter-context = {
+      url = "github:romgrk/nvim-treesitter-context";
+      flake = false;
+    };
   };
 
-  outputs = inputs@{ self, nixpkgs, neovim, nix-bundler, nix-utils, dracula-nvim, ...}:
+  outputs = inputs@{ self, nixpkgs, neovim, nix-bundler, nix-utils, dracula-nvim, rnix-lsp, ...}:
     let pkgs = import nixpkgs {system = "x86_64-linux";};
         DSL = rec {
           # TODO add in case for attrset with args2LuaTable?
@@ -96,33 +104,18 @@
           config = {
             extraConfig = "
 
-local cmp = require('cmp')
- cmp.setup({
-    mapping = {
-      ['<C-n>'] = cmp.mapping.select_next_item({ behavior = cmp.SelectBehavior.Insert }),
-      ['<C-p>'] = cmp.mapping.select_prev_item({ behavior = cmp.SelectBehavior.Insert }),
-      ['<Down>'] = cmp.mapping.select_next_item({ behavior = cmp.SelectBehavior.Select }),
-      ['<Up>'] = cmp.mapping.select_prev_item({ behavior = cmp.SelectBehavior.Select }),
-      ['<C-d>'] = cmp.mapping.scroll_docs(-4),
-      ['<C-f>'] = cmp.mapping.scroll_docs(4),
-      ['<C-Space>'] = cmp.mapping.complete(),
-      ['<C-e>'] = cmp.mapping.close(),
-      ['<CR>'] = cmp.mapping.confirm({
-        behavior = cmp.ConfirmBehavior.Replace,
-        select = true,
-      })
-    },
-    sources = {
-      { name = 'nvim_lsp' },
-      { name = 'buffer' },
-    }
-  })
-
 local lspc = require('lspconfig')
+
 lspc.rust_analyzer.setup({
   cmd = { '${pkgs.rust-analyzer}/bin/rust-analyzer' },
   capabilities = require('cmp_nvim_lsp').update_capabilities(vim.lsp.protocol.make_client_capabilities())
 })
+
+lspc.rnix.setup({
+  cmd = {'${inputs.rnix-lsp.defaultPackage.x86_64-linux}/bin/rnix-lsp' },
+  capabilities = require('cmp_nvim_lsp').update_capabilities(vim.lsp.protocol.make_client_capabilities())
+})
+
 require('lsp_signature').setup({
   bind = true,
   hint_enable = false,
@@ -145,6 +138,28 @@ require('nvim-treesitter.configs').setup({
    colors = {'#bd93f9', '#6272a4', '#8be9fd', '#50fa7b', '#f1fa8c', '#ffb86c', '#ff5555'}
  }
 })
+
+local cmp = require('cmp')
+ cmp.setup({
+    mapping = {
+      ['<C-n>'] = cmp.mapping.select_next_item({ behavior = cmp.SelectBehavior.Insert }),
+      ['<C-p>'] = cmp.mapping.select_prev_item({ behavior = cmp.SelectBehavior.Insert }),
+      ['<Down>'] = cmp.mapping.select_next_item({ behavior = cmp.SelectBehavior.Select }),
+      ['<Up>'] = cmp.mapping.select_prev_item({ behavior = cmp.SelectBehavior.Select }),
+      ['<C-d>'] = cmp.mapping.scroll_docs(-4),
+      ['<C-f>'] = cmp.mapping.scroll_docs(4),
+      ['<C-Space>'] = cmp.mapping.complete(),
+      ['<C-e>'] = cmp.mapping.close(),
+      ['<CR>'] = cmp.mapping.confirm({
+        behavior = cmp.ConfirmBehavior.Replace,
+        select = true,
+      })
+    },
+    sources = {
+      { name = 'nvim_lsp' },
+      { name = 'buffer' },
+    }
+  })
             ";
             setOptions = {
               vim.g = {
@@ -409,6 +424,7 @@ require('nvim-treesitter.configs').setup({
             (cmp-buffer.overrideAttrs (oldattrs: { src = inputs.cmp-buffer; }))
             (nvim-cmp.overrideAttrs (oldattrs: { src = inputs.nvim-cmp; }))
             (cmp-nvim-lsp.overrideAttrs (oldattrs: { src = inputs.nvim-cmp-lsp; }))
+            (nvim-treesitter-context.overrideAttrs (oldaddrs:{ src = inputs.treesitter-context; } ))
             plenary-nvim
             nerdcommenter
             nvim-lspconfig
