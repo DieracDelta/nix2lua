@@ -12,7 +12,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     telescope-src = {
-      url = "github:nvim-telescope/telescope.nvim?rev=b5c63c6329cff8dd8e23047eecd1f581379f1587";
+      url = "github:nvim-telescope/telescope.nvim";
       flake = false;
     };
     nix-utils = {

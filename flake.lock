@@ -236,17 +236,16 @@
     "telescope-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1634073462,
-        "narHash": "sha256-0I/iu1V7SqGgrzMfeZ0HbKM0/ygMT9+iXJq2CiMorZs=",
+        "lastModified": 1634739806,
+        "narHash": "sha256-wqWUXI1oBG2ceS7X6YwQxFfKiOqG+4p6JnsGfBxKL5k=",
         "owner": "nvim-telescope",
         "repo": "telescope.nvim",
-        "rev": "b5c63c6329cff8dd8e23047eecd1f581379f1587",
+        "rev": "a0835edd86bf13bf2d431632ce2ca128e04f3bf0",
         "type": "github"
       },
       "original": {
         "owner": "nvim-telescope",
         "repo": "telescope.nvim",
-        "rev": "b5c63c6329cff8dd8e23047eecd1f581379f1587",
         "type": "github"
       }
     },
