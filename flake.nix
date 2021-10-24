@@ -446,6 +446,10 @@ local cmp = require('cmp')
     rpm = nix-utils.bundlers.rpm { program = "${result_nvim}/bin/nvim"; system = "x86_64-linux";};
     deb = nix-utils.bundlers.deb { program = "${result_nvim}/bin/nvim"; system = "x86_64-linux";};
     DSL = DSL;
+    defaultApp.x86_64-linux = {
+        type = "app";
+        program = "${result_nvim}/bin/nvim";
+    };
 
     config = pkgs.writeText "config" (DSL.neovimBuilder DSL.config);
 
