@@ -107,12 +107,12 @@
 local lspc = require('lspconfig')
 
 lspc.rust_analyzer.setup({
-  cmd = { '${pkgs.rust-analyzer}/bin/rust-analyzer' },
+  cmd = { 'rust-analyzer' },
   capabilities = require('cmp_nvim_lsp').update_capabilities(vim.lsp.protocol.make_client_capabilities())
 })
 
 lspc.rnix.setup({
-  cmd = {'${inputs.rnix-lsp.defaultPackage.x86_64-linux}/bin/rnix-lsp' },
+  cmd = {'rnix-lsp' },
   capabilities = require('cmp_nvim_lsp').update_capabilities(vim.lsp.protocol.make_client_capabilities())
 })
 
@@ -400,7 +400,7 @@ local cmp = require('cmp')
               (callFn "vim.cmd" ["colorscheme dracula"])
             ];
           };
-		  genPlugin = attrName: attrSet: ''require('${attrName}').setup(${args2LuaTable attrSet})'';
+          genPlugin = attrName: attrSet: ''require('${attrName}').setup(${args2LuaTable attrSet})'';
           neovimBuilder =
             config:
               # HACK find a way to pass this in with an init.lua
@@ -412,10 +412,15 @@ local cmp = require('cmp')
               "${config.extraConfig}" +
               "\nEOF";
         };
+        neovimBuilderWithDeps = import ./neovimBuilder.nix {inherit (pkgs) lib vimUtils nodejs neovim-unwrapped ripgrep bundlerEnv ruby python3Packages writeText wrapNeovimUnstable; rubyPath = "${nixpkgs}/pkgs/applications/editors/neovim/"; };
 
 
 
-        result_nvim = pkgs.wrapNeovim (neovim.defaultPackage.x86_64-linux) {
+        result_nvim = (neovimBuilderWithDeps.legacyWrapper neovim.defaultPackage.x86_64-linux) {
+        #result_nvim = (pkgs.neovimUtils.legacyWrapper neovim.defaultPackage.x86_64-linux) {
+          extraRuntimeDeps = with pkgs; [ripgrep clang rust-analyzer inputs.rnix-lsp.defaultPackage.x86_64-linux];
+          #extraMakeWrapperArgs = "--prefix 'PATH' :  '${(pkgs.lib.makeBinPath [pkgs.ripgrep])}'";
+
           withNodeJs = true;
           configure.customRC = DSL.neovimBuilder DSL.config;
           configure.packages.myVimPackage.start = with pkgs.vimPlugins; [
@@ -439,6 +444,7 @@ local cmp = require('cmp')
   in
   {
     nvim = neovim.defaultPackage.x86_64-linux;
+    nvimBuilder = neovimBuilderWithDeps;
 
     defaultPackage.x86_64-linux = result_nvim;
     # TODO nix portable
@@ -452,6 +458,7 @@ local cmp = require('cmp')
     };
 
     config = pkgs.writeText "config" (DSL.neovimBuilder DSL.config);
+    neovimBuilderWithDeps = neovimBuilderWithDeps;
 
   };
 }
