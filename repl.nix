@@ -4,9 +4,7 @@ let
   pkgs = import nixpkgs {system = "x86_64-linux"; };
 in
   {
-    nixpkgs = nixpkgs;
-    pkgs = pkgs; 
+    pkgs = pkgs;
+    self = flake.inputs.self;
     flake = flake;
-    dsl = flake.DSL;
-
   }

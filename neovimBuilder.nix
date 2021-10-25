@@ -3,11 +3,12 @@
 , nodejs
 , neovim-unwrapped
 , bundlerEnv
-, neovimDeps
 , ruby
+, rubyPath
 , python3Packages
 , writeText
 , wrapNeovimUnstable
+, ripgrep
 }:
 let
   # returns everything needed for the caller to wrap its own neovim:
@@ -29,7 +30,7 @@ let
     , extraPython3Packages ? (_: [ ])
     , withNodeJs ? false
     , withRuby ? true
-    , deps ? []
+    , extraRuntimeDeps ? []
 
     # expects a list of plugin configuration
     # expects { plugin=far-vim; config = "let g:far#source='rg'"; optional = false; }
@@ -45,7 +46,7 @@ let
     let
       rubyEnv = bundlerEnv {
         name = "neovim-ruby-env";
-        gemdir = ./ruby_provider;
+        gemdir = "${rubyPath}/ruby_provider";
         postBuild = ''
           ln -sf ${ruby}/bin/* $out/bin
         '';
@@ -97,7 +98,7 @@ let
       # avoid double wrapping, see comment near finalMakeWrapperArgs
       makeWrapperArgs =
         let
-          binPath = lib.makeBinPath (lib.optionals withRuby [ rubyEnv ] ++ lib.optionals withNodeJs [ nodejs ] + deps);
+          binPath = lib.makeBinPath (lib.optionals withRuby [ rubyEnv ] ++ lib.optionals withNodeJs [ nodejs ] ++ extraRuntimeDeps );
 
           flags = lib.concatLists (lib.mapAttrsToList (
               prog: withProg: [
@@ -111,7 +112,7 @@ let
         ] ++ lib.optionals withRuby [
           "--set" "GEM_HOME" "${rubyEnv}/${rubyEnv.ruby.gemPath}"
         ] ++ lib.optionals (binPath != "") [
-          "--suffix" "PATH" ":" binPath
+          "--prefix" "PATH" ":" binPath
         ];
 
 
@@ -151,6 +152,7 @@ let
     , viAlias ? false
     , configure ? {}
     , extraName ? ""
+    , extraRuntimeDeps ? []
   }:
     let
       /* for compatibility with passing extraPythonPackages as a list; added 2018-07-11 */
@@ -164,6 +166,7 @@ let
         inherit withNodeJs withRuby viAlias vimAlias;
         inherit configure;
         inherit extraName;
+        inherit extraRuntimeDeps;
       };
     in
     assert withPython -> throw "Python2 support has been removed from neovim, please remove withPython and extraPythonPackages.";
