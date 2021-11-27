@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs = { url = "github:NixOS/nixpkgs/master"; };
     neovim = {
-      url = "github:neovim/neovim?rev=88336851ee1e9c3982195592ae2fc145ecfd3369&dir=contrib";
+      url = "github:neovim/neovim?dir=contrib";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     nix-bundler = {
@@ -46,7 +46,7 @@
   };
 
   outputs = inputs@{ self, nixpkgs, neovim, nix-bundler, nix-utils, dracula-nvim, rnix-lsp, ...}:
-    let pkgs = import nixpkgs {system = "x86_64-linux";};
+    let pkgs = import nixpkgs {system = "aarch64-darwin";};
         DSL = rec {
           # TODO add in case for attrset with args2LuaTable?
           primitive2Lua = (prim: if builtins.isBool prim then (if prim then "true" else "false") else (if builtins.isInt prim || builtins.isFloat prim then "${builtins.toString prim}" else "'${prim}'"));
@@ -416,15 +416,18 @@ local cmp = require('cmp')
 
 
 
-        result_nvim = (neovimBuilderWithDeps.legacyWrapper neovim.defaultPackage.x86_64-linux) {
-        #result_nvim = (pkgs.neovimUtils.legacyWrapper neovim.defaultPackage.x86_64-linux) {
-          extraRuntimeDeps = with pkgs; [ripgrep clang rust-analyzer inputs.rnix-lsp.defaultPackage.x86_64-linux];
+        result_nvim = (neovimBuilderWithDeps.legacyWrapper neovim.defaultPackage.aarch64-darwin) {
+        #result_nvim = (pkgs.neovimUtils.legacyWrapper neovim.defaultPackage.aarch64-darwin) {
+
+          #extraRuntimeDeps = with pkgs; [ripgrep clang rust-analyzer inputs.rnix-lsp.defaultPackage.aarch64-darwin];
+          extraRuntimeDeps = with pkgs; [ripgrep clang rust-analyzer];
           #extraMakeWrapperArgs = "--prefix 'PATH' :  '${(pkgs.lib.makeBinPath [pkgs.ripgrep])}'";
 
           withNodeJs = true;
           configure.customRC = DSL.neovimBuilder DSL.config;
           configure.packages.myVimPackage.start = with pkgs.vimPlugins; [
             (pkgs.vimUtils.buildVimPluginFrom2Nix { pname = "dracula-nvim"; version = "master"; src = dracula-nvim; })
+
             (telescope-nvim.overrideAttrs (oldattrs: { src = inputs.telescope-src; }))
             (cmp-buffer.overrideAttrs (oldattrs: { src = inputs.cmp-buffer; }))
             (nvim-cmp.overrideAttrs (oldattrs: { src = inputs.nvim-cmp; }))
@@ -443,16 +446,16 @@ local cmp = require('cmp')
         };
   in
   {
-    nvim = neovim.defaultPackage.x86_64-linux;
+    nvim = neovim.defaultPackage.aarch64-darwin;
     nvimBuilder = neovimBuilderWithDeps;
 
-    defaultPackage.x86_64-linux = result_nvim;
+    defaultPackage.aarch64-darwin = result_nvim;
     # TODO nix portable
-    nix-bundle = nix-bundler.defaultBundler { program = "${result_nvim}/bin/nvim"; system = "x86_64-linux";};
-    rpm = nix-utils.bundlers.rpm { program = "${result_nvim}/bin/nvim"; system = "x86_64-linux";};
-    deb = nix-utils.bundlers.deb { program = "${result_nvim}/bin/nvim"; system = "x86_64-linux";};
+    nix-bundle = nix-bundler.defaultBundler { program = "${result_nvim}/bin/nvim"; system = "aarch64-darwin";};
+    rpm = nix-utils.bundlers.rpm { program = "${result_nvim}/bin/nvim"; system = "aarch64-darwin";};
+    deb = nix-utils.bundlers.deb { program = "${result_nvim}/bin/nvim"; system = "aarch64-darwin";};
     DSL = DSL;
-    defaultApp.x86_64-linux = {
+    defaultApp.aarch64-darwin = {
         type = "app";
         program = "${result_nvim}/bin/nvim";
     };
