@@ -454,8 +454,7 @@ local cmp = require('cmp')
     #nix-bundle = nix-bundler.defaultBundler { program = "${result_nvim}/bin/nvim"; system = "aarch64-darwin";};
     #rpm = nix-utils.bundlers.rpm { program = "${result_nvim}/bin/nvim"; system = "aarch64-darwin";};
     #deb = nix-utils.bundlers.deb { program = "${result_nvim}/bin/nvim"; system = "aarch64-darwin";};
-    DSL.x86_64-linux = DSL { pkgs = import nixpkgs {system = "x86_64-linux";}; };
-    DSL.aarch64-darwin = DSL { pkgs = import nixpkgs {system = "aarch64-darwin";}; };
+    DSL = DSL;
     #defaultApp.aarch64-darwin = {
         #type = "app";
         #program = "${result_nvim}/bin/nvim";
