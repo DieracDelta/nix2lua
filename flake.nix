@@ -47,7 +47,7 @@
 
   outputs = inputs@{ self, nixpkgs, neovim, nix-bundler, nix-utils, dracula-nvim, rnix-lsp, ...}:
     let pkgs = import nixpkgs {system = "aarch64-darwin";};
-        DSL = rec {
+        DSL = pkgs : rec {
           # TODO add in case for attrset with args2LuaTable?
           primitive2Lua = (prim: if builtins.isBool prim then (if prim then "true" else "false") else (if builtins.isInt prim || builtins.isFloat prim then "${builtins.toString prim}" else "'${prim}'"));
           # name: what to call
@@ -446,22 +446,23 @@ local cmp = require('cmp')
         };
   in
   {
-    nvim = neovim.defaultPackage.aarch64-darwin;
-    nvimBuilder = neovimBuilderWithDeps;
+    #nvim = neovim.defaultPackage.aarch64-darwin;
+    #nvimBuilder = neovimBuilderWithDeps;
 
-    defaultPackage.aarch64-darwin = result_nvim;
-    # TODO nix portable
-    nix-bundle = nix-bundler.defaultBundler { program = "${result_nvim}/bin/nvim"; system = "aarch64-darwin";};
-    rpm = nix-utils.bundlers.rpm { program = "${result_nvim}/bin/nvim"; system = "aarch64-darwin";};
-    deb = nix-utils.bundlers.deb { program = "${result_nvim}/bin/nvim"; system = "aarch64-darwin";};
-    DSL = DSL;
-    defaultApp.aarch64-darwin = {
-        type = "app";
-        program = "${result_nvim}/bin/nvim";
-    };
+    #defaultPackage.aarch64-darwin = result_nvim;
+    ## TODO nix portable
+    #nix-bundle = nix-bundler.defaultBundler { program = "${result_nvim}/bin/nvim"; system = "aarch64-darwin";};
+    #rpm = nix-utils.bundlers.rpm { program = "${result_nvim}/bin/nvim"; system = "aarch64-darwin";};
+    #deb = nix-utils.bundlers.deb { program = "${result_nvim}/bin/nvim"; system = "aarch64-darwin";};
+    DSL.x86_64-linux = DSL { pkgs = import nixpkgs {system = "x86_64-linux";}; };
+    DSL.aarch64-darwin = DSL { pkgs = import nixpkgs {system = "aarch64-darwin";}; };
+    #defaultApp.aarch64-darwin = {
+        #type = "app";
+        #program = "${result_nvim}/bin/nvim";
+    #};
 
-    config = pkgs.writeText "config" (DSL.neovimBuilder DSL.config);
-    neovimBuilderWithDeps = neovimBuilderWithDeps;
+    #config = pkgs.writeText "config" (DSL.neovimBuilder DSL.config);
+    #neovimBuilderWithDeps = neovimBuilderWithDeps;
 
   };
 }
