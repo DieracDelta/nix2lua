@@ -411,39 +411,39 @@ local cmp = require('cmp')
               (builtins.foldl' (acc: ele: acc + "\n" + ele) "" config.rawLua) +
               "${config.extraConfig}" +
               "\nEOF";
+          neovimBuilderWithDeps = import ./neovimBuilder.nix {inherit (pkgs) lib vimUtils nodejs neovim-unwrapped ripgrep bundlerEnv ruby python3Packages writeText wrapNeovimUnstable; rubyPath = "${nixpkgs}/pkgs/applications/editors/neovim/"; };
         };
-        neovimBuilderWithDeps = import ./neovimBuilder.nix {inherit (pkgs) lib vimUtils nodejs neovim-unwrapped ripgrep bundlerEnv ruby python3Packages writeText wrapNeovimUnstable; rubyPath = "${nixpkgs}/pkgs/applications/editors/neovim/"; };
 
 
 
-        result_nvim = (neovimBuilderWithDeps.legacyWrapper neovim.defaultPackage.aarch64-darwin) {
-        #result_nvim = (pkgs.neovimUtils.legacyWrapper neovim.defaultPackage.aarch64-darwin) {
+        #result_nvim = (neovimBuilderWithDeps.legacyWrapper neovim.defaultPackage.aarch64-darwin) {
+        ##result_nvim = (pkgs.neovimUtils.legacyWrapper neovim.defaultPackage.aarch64-darwin) {
 
-          #extraRuntimeDeps = with pkgs; [ripgrep clang rust-analyzer inputs.rnix-lsp.defaultPackage.aarch64-darwin];
-          extraRuntimeDeps = with pkgs; [ripgrep clang rust-analyzer];
-          #extraMakeWrapperArgs = "--prefix 'PATH' :  '${(pkgs.lib.makeBinPath [pkgs.ripgrep])}'";
+          ##extraRuntimeDeps = with pkgs; [ripgrep clang rust-analyzer inputs.rnix-lsp.defaultPackage.aarch64-darwin];
+          #extraRuntimeDeps = with pkgs; [ripgrep clang rust-analyzer];
+          ##extraMakeWrapperArgs = "--prefix 'PATH' :  '${(pkgs.lib.makeBinPath [pkgs.ripgrep])}'";
 
-          withNodeJs = true;
-          configure.customRC = DSL.neovimBuilder DSL.config;
-          configure.packages.myVimPackage.start = with pkgs.vimPlugins; [
-            (pkgs.vimUtils.buildVimPluginFrom2Nix { pname = "dracula-nvim"; version = "master"; src = dracula-nvim; })
+          #withNodeJs = true;
+          #configure.customRC = DSL.neovimBuilder DSL.config;
+          #configure.packages.myVimPackage.start = with pkgs.vimPlugins; [
+            #(pkgs.vimUtils.buildVimPluginFrom2Nix { pname = "dracula-nvim"; version = "master"; src = dracula-nvim; })
 
-            (telescope-nvim.overrideAttrs (oldattrs: { src = inputs.telescope-src; }))
-            (cmp-buffer.overrideAttrs (oldattrs: { src = inputs.cmp-buffer; }))
-            (nvim-cmp.overrideAttrs (oldattrs: { src = inputs.nvim-cmp; }))
-            (cmp-nvim-lsp.overrideAttrs (oldattrs: { src = inputs.nvim-cmp-lsp; }))
-            (nvim-treesitter-context.overrideAttrs (oldaddrs:{ src = inputs.treesitter-context; } ))
-            plenary-nvim
-            nerdcommenter
-            nvim-lspconfig
-            lspkind-nvim
-            (pkgs.vimPlugins.nvim-treesitter.withPlugins (
-              plugins: with plugins; [tree-sitter-nix tree-sitter-python tree-sitter-c tree-sitter-rust]
-            ))
-            lsp_signature-nvim
-            popup-nvim
-          ];
-        };
+            #(telescope-nvim.overrideAttrs (oldattrs: { src = inputs.telescope-src; }))
+            #(cmp-buffer.overrideAttrs (oldattrs: { src = inputs.cmp-buffer; }))
+            #(nvim-cmp.overrideAttrs (oldattrs: { src = inputs.nvim-cmp; }))
+            #(cmp-nvim-lsp.overrideAttrs (oldattrs: { src = inputs.nvim-cmp-lsp; }))
+            #(nvim-treesitter-context.overrideAttrs (oldaddrs:{ src = inputs.treesitter-context; } ))
+            #plenary-nvim
+            #nerdcommenter
+            #nvim-lspconfig
+            #lspkind-nvim
+            #(pkgs.vimPlugins.nvim-treesitter.withPlugins (
+              #plugins: with plugins; [tree-sitter-nix tree-sitter-python tree-sitter-c tree-sitter-rust]
+            #))
+            #lsp_signature-nvim
+            #popup-nvim
+          #];
+        #};
   in
   {
     #nvim = neovim.defaultPackage.aarch64-darwin;
